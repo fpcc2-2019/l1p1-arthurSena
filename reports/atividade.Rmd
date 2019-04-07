@@ -1,0 +1,141 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+# Importing libraries
+library(tidyverse)
+library(here)
+library(lubridate)
+library(ggbeeswarm)
+library(ggplot2)
+library(lubridate)
+library(gridExtra)
+
+theme_set(theme_bw())
+```
+
+## __Overview__
+Esses dados tem como fonte o INMET e representam a temperatura e o volume de chuva ao longo das semanas das cidades de Campina Grande e João Pessoa entre os anos de 2008 até 2019. Logo abaixo, vemos uma amostra desses dados. 
+
+
+```{r}
+
+climas = read_csv(here::here("data/clima_cg_jp-semanal.csv"), 
+                  col_types = "cTdddddd")
+head(climas)
+
+```
+
+
+Com esses dados em mãos vamos tentar responder as seguintes perguntas:\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1. Onde é mais quente?\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. Quais os meses mais quentes e mais frios?\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3. Quanto chove por semana em JP e CG?\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;4. A distribuição é diferente em meses específicos? \
+
+
+
+## __Onde é mais quente?__
+Para responder esta pergunta, precisamos analisar a distribuição de temperaturas das duas cidades.
+
+```{r}
+    
+    density_by_cities = climas %>%
+                            ggplot(aes(x = tmedia, fill = cidade)) + 
+                                geom_density(alpha = .4)
+
+    boxplot_by_cities = climas %>% 
+        ggplot(aes(x = cidade, y = tmedia)) + 
+            geom_boxplot(coef = 1000, width = .2) 
+    
+    grid.arrange(density_by_cities, ncol = 1)
+    grid.arrange(boxplot_by_cities, ncol = 1)
+    
+```
+Observando os gráficos acima notamos que a cidade João Pessoa apresenta uma mediana de temperatura mais elevada que Campina Grande, porém precisamos descobrir se essa diferença é ou não significativa. Para isso, podemos usar um teste estatistico conhecido como test-t student. De forma simplificada, tal teste compara duas médias e avalia se há uma diferença estatistica significante. Abaixo segue o resultado do teste. 
+
+```{r}
+t.test(climas$tmedia~climas$cidade, var.equal=T)
+```
+ Analisando o resultado, vemos que a hipótese nula foi rejeitada (p < 2.2e-16) e realmente existe uma diferença significativa entre as médias, o que indica que João Pessoa é mais quente que Campina Grande.
+ 
+## __Quais os meses mais quentes e mais frios?__
+Podemos agrupar as temperaturas por meses e analisar o resultado para responder esta pergunta. 
+
+```{r}
+
+    climas = climas %>%  mutate(dia=lubridate::day(semana)) %>% mutate(estacao = if_else(mes>=4 & mes <=6,  "Outono",
+                                         if_else(mes>=7 & mes <=9,  "Inverno",
+                                                 if_else(mes>=9 & mes <=11,  "Primavera",
+                                                         if_else(mes==12 | mes <=3,  "Verao", "NA")
+                                                         )
+                                                 )
+                                         )
+                       )
+
+    density_by_seasons = climas %>%
+                            ggplot(aes(x = tmedia)) + 
+                                geom_density(alpha = .4, fill = "salmon") + 
+                                    facet_wrap(~ estacao)
+            
+    
+    density_by_months = climas %>%
+                            ggplot(aes(x = tmedia)) + 
+                                geom_density(alpha = .4, fill = "salmon") + 
+                                    facet_wrap(~ mes)
+    boxplot_by_seasons = climas %>% 
+                            ggplot(aes(x = estacao, y = tmedia)) + 
+                                geom_boxplot(coef = 1000, width = .2) 
+
+    grid.arrange(density_by_months, ncol = 1)
+    grid.arrange(density_by_seasons, ncol = 1)
+    grid.arrange(boxplot_by_seasons, ncol = 1)
+```
+
+
+Analisando as distribuições de temperatura ao longo dos meses, notamos uma certa tendencia a ter temperaturas maiores no fim e começo do ano, ao passo que nos meses que se encontram no meio do ano, a temperatura tende a ser menor. Para que a análise ficasse mais clara, um agrupamento da temperatura por estações do ano foi feito e vemos que os meses que correspondem ao Verão e Primavera, ou seja Setembro até Março, tem uma mediana de temperatura maior. De forma contrária, os meses que estendem de Abril até Julho apresentam uma menor mediana de temperatura.
+
+## __Quanto chove por semana em JP e CG?__
+Podemos responder essa pergunta analisando a distribuição de precipitação de chuva em cada uma das cidades.
+
+```{r}
+    rain_median = climas %>% group_by(cidade) %>% summarise(chuva_mediana=median(chuva))
+
+    rain_by_cities = climas %>% ggplot(aes(x=chuva, color=cidade)) +
+                        geom_histogram(fill="white", position="dodge")+
+                            theme(legend.position="top") +
+                                geom_vline(data=rain_median, aes(xintercept=chuva_mediana, color=cidade),
+             linetype="dashed")
+    
+    rain_density_by_cities = climas %>%
+                            ggplot(aes(x = chuva, fill = cidade)) + 
+                                geom_density(alpha = .4)
+
+    grid.arrange(rain_by_cities, ncol=1)
+    grid.arrange(rain_density_by_cities, ncol=1)
+    rain_median
+```
+
+Os valores da mediana do volume de precipitação de chuvas em Campina Grande e João Pessoa são, respectivamente 4.9 e 14.1. Analisando a distribuição de chuvas acima
+vemos que elas corroboram tais valores, pois a distribuição de Campina se encontra mais concentrada no zero.
+
+
+
+## __A distribuição é diferente em meses específicos?__
+<p>Vamos agora agrupar o volume de precipitação de chuva por meses e analisar o resultado.</p> 
+
+```{r}
+rain_density_by_months = climas %>%
+                            ggplot(aes(x = chuva)) + 
+                                geom_density(alpha = .4, fill = "salmon") + 
+                                    facet_wrap(~ mes)
+grid.arrange(rain_density_by_months, ncol=1)
+```
+
+Analisando as distribuições acima vemos que o volume de chuva diferente quanto ao mês. Por exemplo, os meses de Novembro e Dezembro apresentam um volume
+de chuva bem mais baixo do que os outros meses, visto que a os dados se encontram concentrado no zero. Lembrando que tais meses estão relacionados com o
+fim da primavera e início do verão, relação esta que explica o baixo volume de chuva nessa época.
