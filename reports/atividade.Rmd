@@ -30,6 +30,25 @@ head(climas)
 
 ```
 
+Abaixo, vemos a quantidade de dados por cidade. No caso, João Pessoa apresenta uma quantidade de dados um pouco maior, o que talvez enviese nossas conclusões.
+```{r}
+    climas %>% group_by(cidade) %>% summarise(n=n()) %>% mutate(freq = n / sum(n))
+```
+
+Outro ponto interessante é a quantidade de dados por ano e cidade, pois como vemos abaixo, João Pessoa começou a coletar dados a partir de 1987, ao passo que Campina Grande só a partir de 1992.
+
+```{r}
+    climas %>% group_by(cidade, ano) %>% summarise(n=n()) %>% group_by(cidade) %>% summarise(qtd_anos=n())
+```
+
+```{r}
+    cg_first_years = head(climas %>% filter(cidade == "Campina Grande") %>% distinct(cidade, ano), 4)  %>% rename(primeiros_anos = ano)
+    cg_first_years
+    
+    jp_first_years = head(climas %>% filter(cidade != "Campina Grande") %>% distinct(cidade, ano), 4) %>% rename(primeiros_anos = ano)
+    jp_first_years
+```
+
 
 Com esses dados em mãos vamos tentar responder as seguintes perguntas:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1. Onde é mais quente?\
@@ -56,6 +75,7 @@ Para responder esta pergunta, precisamos analisar a distribuição de temperatur
     grid.arrange(boxplot_by_cities, ncol = 1)
     
 ```
+
 Observando os gráficos acima notamos que a cidade João Pessoa apresenta uma mediana de temperatura mais elevada que Campina Grande, porém precisamos descobrir se essa diferença é ou não significativa. Para isso, podemos usar um teste estatistico conhecido como test-t student. De forma simplificada, tal teste compara duas médias e avalia se há uma diferença estatistica significante. Abaixo segue o resultado do teste. 
 
 ```{r}
@@ -121,7 +141,7 @@ Podemos responder essa pergunta analisando a distribuição de precipitação de
 ```
 
 Os valores da mediana do volume de precipitação de chuvas em Campina Grande e João Pessoa são, respectivamente 4.9 e 14.1. Analisando a distribuição de chuvas acima
-vemos que elas corroboram tais valores, pois a distribuição de Campina se encontra mais concentrada no zero.
+vemos que elas corroboram tais valores, pois a distribuição de Campina se encontra mais concentrada no zero. A mediana foi escolhida como forma de sumarização, pois a mesma não é tão facilmente influenciada por valores extremos como a média, por exemplo.
 
 
 
@@ -136,6 +156,6 @@ rain_density_by_months = climas %>%
 grid.arrange(rain_density_by_months, ncol=1)
 ```
 
-Analisando as distribuições acima vemos que o volume de chuva diferente quanto ao mês. Por exemplo, os meses de Novembro e Dezembro apresentam um volume
-de chuva bem mais baixo do que os outros meses, visto que a os dados se encontram concentrado no zero. Lembrando que tais meses estão relacionados com o
+Analisando as distribuições acima, vemos que o volume de chuva difere quanto ao mês. Por exemplo, os meses de Novembro e Dezembro apresentam um volume
+de chuva bem mais baixo do que os outros meses, visto que a os dados se encontram concentrados no zero. Lembrando que tais meses estão relacionados com o
 fim da primavera e início do verão, relação esta que explica o baixo volume de chuva nessa época.
